@@ -10,6 +10,8 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: prep
+    description: Placement preparation content and progress
 paths:
   /healthz:
     get:
@@ -24,6 +26,97 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /dashboard:
+    get:
+      operationId: getDashboard
+      tags: [prep]
+      summary: Get learner dashboard summary
+      responses:
+        "200":
+          description: Dashboard summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Dashboard"
+  /practice:
+    get:
+      operationId: listPractice
+      tags: [prep]
+      summary: List coding practice questions
+      parameters:
+        - name: category
+          in: query
+          schema:
+            type: string
+        - name: difficulty
+          in: query
+          schema:
+            type: string
+        - name: search
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Practice questions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PracticeQuestion"
+  /companies:
+    get:
+      operationId: listCompanies
+      tags: [prep]
+      summary: List company preparation plans
+      responses:
+        "200":
+          description: Company plans
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CompanyPlan"
+  /tests:
+    get:
+      operationId: listTests
+      tags: [prep]
+      summary: List mock assessments
+      responses:
+        "200":
+          description: Mock assessments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MockTest"
+  /tests/{testId}/submit:
+    post:
+      operationId: submitTest
+      tags: [prep]
+      summary: Submit a mock assessment
+      parameters:
+        - name: testId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TestSubmission"
+      responses:
+        "200":
+          description: Assessment result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TestResult"
 components:
   schemas:
     HealthStatus:
@@ -33,4 +126,78 @@ components:
           type: string
       required:
         - status
+    Dashboard:
+      type: object
+      required: [readiness, solved, streak, studyMinutes, continueTopic, heatmap]
+      properties:
+        readiness: { type: number }
+        solved: { type: integer }
+        streak: { type: integer }
+        studyMinutes: { type: integer }
+        continueTopic: { type: string }
+        heatmap:
+          type: array
+          items:
+            type: object
+            required: [topic, score]
+            properties:
+              topic: { type: string }
+              score: { type: integer }
+    PracticeQuestion:
+      type: object
+      required: [id, title, category, difficulty, acceptance, time, tags, prompt, explanation]
+      properties:
+        id: { type: string }
+        title: { type: string }
+        category: { type: string }
+        difficulty: { type: string }
+        acceptance: { type: number }
+        time: { type: string }
+        tags:
+          type: array
+          items: { type: string }
+        prompt: { type: string }
+        explanation: { type: string }
+    CompanyPlan:
+      type: object
+      required: [id, name, logo, accent, rounds, applicants, focus, overview, plan]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        logo: { type: string }
+        accent: { type: string }
+        rounds: { type: integer }
+        applicants: { type: string }
+        focus: { type: string }
+        overview: { type: string }
+        plan:
+          type: array
+          items: { type: string }
+    MockTest:
+      type: object
+      required: [id, title, company, type, questions, duration, difficulty, description]
+      properties:
+        id: { type: string }
+        title: { type: string }
+        company: { type: string }
+        type: { type: string }
+        questions: { type: integer }
+        duration: { type: integer }
+        difficulty: { type: string }
+        description: { type: string }
+    TestSubmission:
+      type: object
+      required: [answers]
+      properties:
+        answers:
+          type: object
+          additionalProperties: { type: integer }
+    TestResult:
+      type: object
+      required: [score, total, percentage, recommendation]
+      properties:
+        score: { type: integer }
+        total: { type: integer }
+        percentage: { type: number }
+        recommendation: { type: string }
 

@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "PrepitWorks"
+description = "A focused placement preparation workspace for computer science students with company prep plans, algorithm practice, mock assessments, and a browser code lab."
+version = "1.0.0"
+id = "artifacts/prepitworks"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 23174
+
+[services.development]
+run = "pnpm --filter @workspace/prepitworks run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/prepitworks", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/prepitworks/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "23174"
+BASE_PATH = "/"
