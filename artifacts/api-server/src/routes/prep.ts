@@ -1,3 +1,7 @@
+import { spawn } from "node:child_process";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { Router, type IRouter } from "express";
 import {
   GetDashboardResponse,
@@ -9,6 +13,7 @@ import {
   SubmitTestParams,
   SubmitTestResponse,
 } from "@workspace/api-zod";
+import { getUserFromToken, toDashboard } from "./auth";
 
 const router: IRouter = Router();
 
@@ -340,21 +345,57 @@ const tests = [
   { id: "google-logic", title: "Google Reasoning Lab", company: "Google", type: "Algorithms", questions: 9, duration: 40, difficulty: "Advanced", description: "Constraint-led algorithmic reasoning with follow-ups that test whether your solution scales." },
 ] as const;
 
-const generatedPractice = Array.from({ length: 84 }, (_, index) => {
+const generatedPracticeTopics = [
+  ["DSA", "Two Pointer Window", "Arrays"],
+  ["DSA", "Prefix Sum Queries", "Arrays"],
+  ["DSA", "Monotonic Stack Prices", "Stacks"],
+  ["DSA", "Sliding Window Frequency", "Strings"],
+  ["DSA", "Merge Sorted Sequences", "Linked Lists"],
+  ["DSA", "Reverse Nodes by Group", "Linked Lists"],
+  ["DSA", "Clone Graph", "Graphs"],
+  ["DSA", "Bipartite Coloring", "Graphs"],
+  ["DSA", "Shortest Path Grid", "Graphs"],
+  ["DSA", "Minimum Spanning Network", "Graphs"],
+  ["DSA", "Topological Course Order", "Graphs"],
+  ["DSA", "Binary Tree Diameter", "Trees"],
+  ["DSA", "Serialize Binary Tree", "Trees"],
+  ["DSA", "Kth Smallest Tree Node", "Trees"],
+  ["DSA", "Trie Prefix Search", "Tries"],
+  ["DSA", "Heap Top K Values", "Heaps"],
+  ["DSA", "Meeting Room Schedule", "Intervals"],
+  ["DSA", "Subsets with Duplicates", "Backtracking"],
+  ["DSA", "Word Search Grid", "Backtracking"],
+  ["DSA", "Partition Equal Sum", "Dynamic Programming"],
+  ["DSA", "Coin Change Count", "Dynamic Programming"],
+  ["DSA", "Edit Distance Table", "Dynamic Programming"],
+  ["DSA", "Longest Increasing Run", "Dynamic Programming"],
+  ["DSA", "Bitwise Unique Element", "Bit Manipulation"],
+  ["DSA", "Count Set Bits", "Bit Manipulation"],
+  ["Core CS", "Page Replacement Trace", "Operating Systems"],
+  ["Core CS", "Deadlock Safe State", "Operating Systems"],
+  ["Core CS", "Process Scheduling", "Operating Systems"],
+  ["Core CS", "B Tree Index Lookup", "DBMS"],
+  ["Core CS", "Transaction Isolation", "DBMS"],
+  ["Core CS", "Query Plan Cost", "DBMS"],
+  ["Core CS", "DNS Resolution Path", "Networks"],
+  ["Core CS", "TCP Congestion Window", "Networks"],
+  ["Core CS", "HTTP Cache Policy", "Networks"],
+  ["Core CS", "Interface Segregation Design", "OOP"],
+  ["Core CS", "Garbage Collection Trace", "OOP"],
+  ["Aptitude", "Percentage Change Drill", "Quantitative"],
+  ["Aptitude", "Profit Loss Set", "Quantitative"],
+  ["Aptitude", "Probability Cards", "Probability"],
+  ["Aptitude", "Syllogism Validation", "Reasoning"],
+  ["Aptitude", "Number Series Pattern", "Reasoning"],
+  ["Aptitude", "Data Interpretation Table", "Data Interpretation"],
+  ["System Design", "Rate Limiter Blueprint", "Architecture"],
+  ["System Design", "Event Queue Blueprint", "Architecture"],
+  ["System Design", "Search Autocomplete", "Architecture"],
+] as const;
+
+const generatedPractice = Array.from({ length: 200 }, (_, index) => {
   const number = index + 1;
-  const topics = [
-    ["DSA", "Rotate Array", "Arrays"],
-    ["DSA", "Detect Cycle in Linked List", "Linked Lists"],
-    ["DSA", "Lowest Common Ancestor", "Trees"],
-    ["DSA", "Number of Islands", "Graphs"],
-    ["DSA", "Longest Common Subsequence", "Dynamic Programming"],
-    ["Core CS", "Database Index Selection", "DBMS"],
-    ["Core CS", "TCP Handshake Trace", "Networks"],
-    ["Core CS", "Thread Pool Design", "Operating Systems"],
-    ["Aptitude", "Time and Work Set", "Quantitative"],
-    ["System Design", "Design a Notification Service", "Architecture"],
-  ] as const;
-  const [category, title, topic] = topics[index % topics.length];
+  const [category, title, topic] = generatedPracticeTopics[index % generatedPracticeTopics.length];
   const difficulty = index % 5 === 0 ? "Hard" : index % 3 === 0 ? "Medium" : "Easy";
   return {
     id: `${title.toLowerCase().replaceAll(" ", "-")}-${number}`,
@@ -371,7 +412,14 @@ const generatedPractice = Array.from({ length: 84 }, (_, index) => {
 
 const allPractice = [...practice, ...generatedPractice];
 
-router.get("/dashboard", (_req, res) => {
+router.get("/dashboard", async (req, res) => {
+  const token = req.header("authorization")?.replace(/^Bearer\s+/i, "");
+  const user = await getUserFromToken(token);
+  if (user) {
+    res.json(GetDashboardResponse.parse(toDashboard(user)));
+    return;
+  }
+
   res.json(GetDashboardResponse.parse({
     readiness: 68,
     solved: 142,
@@ -421,6 +469,79 @@ router.post("/tests/:testId/submit", (req, res) => {
       ? "Good base. Revisit the missed concepts, then repeat this test without looking at notes."
       : "Rebuild the fundamentals first. Use the practice vault to close one topic gap before retaking.";
   res.json(SubmitTestResponse.parse({ score, total: test.questions, percentage, recommendation }));
+});
+
+function runLocalProcess(command: string, args: string[], cwd: string) {
+  return new Promise<{ stdout: string; stderr: string; code: number | null }>((resolve) => {
+    const child = spawn(command, args, { cwd, shell: false });
+    let stdout = "";
+    let stderr = "";
+    const timer = setTimeout(() => child.kill("SIGKILL"), 5000);
+    child.stdout.on("data", (chunk) => { stdout += chunk.toString(); });
+    child.stderr.on("data", (chunk) => { stderr += chunk.toString(); });
+    child.on("error", (error) => { clearTimeout(timer); resolve({ stdout, stderr: error.message, code: 1 }); });
+    child.on("close", (code) => { clearTimeout(timer); resolve({ stdout, stderr, code }); });
+  });
+}
+
+const javaHome = process.env.JAVA_HOME ?? "/opt/homebrew/opt/openjdk";
+const javaCompiler = join(javaHome, "bin", "javac");
+const javaRuntime = join(javaHome, "bin", "java");
+const goRuntime = process.env.GO_PATH ?? "/opt/homebrew/bin/go";
+
+router.post("/compile", async (req, res) => {
+  const language = typeof req.body?.language === "string" ? req.body.language : "";
+  const code = typeof req.body?.code === "string" ? req.body.code : "";
+
+  if (!["python", "java", "cpp", "javascript", "go"].includes(language) || !code.trim() || code.length > 20000) {
+    res.status(400).json({ error: "Choose a supported language and provide code under 20,000 characters." });
+    return;
+  }
+
+  const directory = await mkdtemp(join(tmpdir(), "prepitworks-"));
+  try {
+    if (language === "python") {
+      await writeFile(join(directory, "main.py"), code, "utf8");
+      const result = await runLocalProcess("python3", ["main.py"], directory);
+      res.json({ output: result.stdout, error: result.stderr });
+      return;
+    }
+    if (language === "javascript") {
+      await writeFile(join(directory, "main.js"), code, "utf8");
+      const result = await runLocalProcess("node", ["main.js"], directory);
+      res.json({ output: result.stdout, error: result.stderr });
+      return;
+    }
+    if (language === "cpp") {
+      await writeFile(join(directory, "main.cpp"), code, "utf8");
+      const compile = await runLocalProcess("g++", ["main.cpp", "-std=c++20", "-O0", "-o", "main"], directory);
+      if (compile.code !== 0) {
+        res.json({ output: compile.stdout, error: compile.stderr });
+        return;
+      }
+      const result = await runLocalProcess(join(directory, "main"), [], directory);
+      res.json({ output: result.stdout, error: result.stderr });
+      return;
+    }
+    if (language === "go") {
+      await writeFile(join(directory, "main.go"), code, "utf8");
+      const result = await runLocalProcess(goRuntime, ["run", "main.go"], directory);
+      res.json({ output: result.stdout, error: result.stderr });
+      return;
+    }
+    await writeFile(join(directory, "Main.java"), code, "utf8");
+    const compile = await runLocalProcess(javaCompiler, ["Main.java"], directory);
+    if (compile.code !== 0) {
+      res.json({ output: compile.stdout, error: compile.stderr });
+      return;
+    }
+    const result = await runLocalProcess(javaRuntime, ["-cp", directory, "Main"], directory);
+    res.json({ output: result.stdout, error: result.stderr });
+  } catch (error) {
+    res.status(500).json({ error: error instanceof Error ? error.message : "Compiler error." });
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
 });
 
 export default router;

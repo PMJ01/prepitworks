@@ -47,3 +47,6 @@ Thumbs.db
 # Replit
 .cache/
 .local/
+
+# Local development data (contains password hashes and session tokens)
+/artifacts/api-server/data/users.json

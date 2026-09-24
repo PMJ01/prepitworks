@@ -1,0 +1,69 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Run Prepitworks app",
+			"type": "shell",
+			"command": "cd /Users/sakshi/Downloads/PrepitWorks-placement-platform/artifacts/prepitworks && pnpm dev --host 0.0.0.0",
+			"isBackground": true,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Install Rollup native dependency",
+			"type": "shell",
+			"command": "cd /Users/sakshi/Downloads/PrepitWorks-placement-platform && pnpm add -Dw @rollup/rollup-darwin-arm64@4.63.1",
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Run Prepitworks app",
+			"type": "shell",
+			"command": "cd /Users/sakshi/Downloads/PrepitWorks-placement-platform/artifacts/prepitworks && pnpm dev --host 0.0.0.0",
+			"isBackground": true,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Install lightningcss native dependency",
+			"type": "shell",
+			"command": "cd /Users/sakshi/Downloads/PrepitWorks-placement-platform && pnpm add -Dw lightningcss-darwin-arm64@1.32.0",
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Run Prepitworks app",
+			"type": "shell",
+			"command": "cd /Users/sakshi/Downloads/PrepitWorks-placement-platform/artifacts/prepitworks && pnpm dev --host 0.0.0.0",
+			"isBackground": true,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Install Tailwind native dependency",
+			"type": "shell",
+			"command": "cd /Users/sakshi/Downloads/PrepitWorks-placement-platform && pnpm add -Dw @tailwindcss/oxide-darwin-arm64@4.3.3",
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Run Prepitworks app",
+			"type": "shell",
+			"command": "cd /Users/sakshi/Downloads/PrepitWorks-placement-platform/artifacts/prepitworks && pnpm dev --host 0.0.0.0",
+			"isBackground": true,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Run Prepitworks app",
+			"type": "shell",
+			"command": "cd /Users/sakshi/Downloads/PrepitWorks-placement-platform/artifacts/prepitworks && PORT=3000 BASE_PATH=/ pnpm dev --host 0.0.0.0",
+			"isBackground": true,
+			"problemMatcher": [],
+			"group": "build"
+		}
+	]
+}
